@@ -1,0 +1,113 @@
+<html>
+  <head>
+<title>Trivial Data Import</title>
+<script src="lib/jquery-1.9.1.min.js"></script>
+<style>
+#firesbyday {
+    width: 1000px;
+    height: 300px;
+    border: 1px solid black;
+    position: relative;
+}
+.point {
+    background-color: red;
+    width: 5px;
+    height: 5px;
+    position: absolute;
+}
+</style>
+<script>
+
+var NDAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+// Date helper functions
+function date_to_x(date) {
+    var mm = Number(date.split("/")[0]) - 1; // computers 0-index
+    var dd = Number(date.split("/")[1]);
+    var yy = Number(date.split("/")[2]);
+
+    // XXX: Don't hardcode start date
+    var ndays_since_2012 = 0;
+    NDAYS.forEach(function(ndays_in_month,idx) {
+        if(idx < mm) {
+            ndays_since_2012 += ndays_in_month;
+        }
+    });
+    ndays_since_2012 += dd;
+
+    if(yy == 13) {
+        ndays_since_2012 += 365;
+    }
+    return 2 * ndays_since_2012;
+};
+
+function render_rows(rows) {
+    // Return a jquery table object -- a poor man's spreadsheet
+    var cols = [];
+    for(var key in rows[0]) {
+        cols.push(key);
+    }
+    cols.sort();
+    var $t = $("<table>")
+        .addClass("spreadsheet");
+    // Add a header to the table
+    var $th = $("<tr>")
+        .appendTo($t);
+    cols.forEach(function(name) {
+        $("<th>").text(name)
+            .appendTo($th);
+    });
+
+    rows.forEach(function(row) {
+        var $r = $("<tr>")
+            .appendTo($t);
+        cols.forEach(function(name) {
+            $("<td>").text(row[name])
+                .appendTo($r);
+        });
+    });
+
+    return $t;
+};
+
+function display(date, rows) {
+    var $el = $("<div>")
+        .addClass("point")
+        .offset({left: date_to_x(date),
+                 top: (30-rows.length) * 10})
+        .appendTo($("#firesbyday"))
+        .mouseover(function() {
+            $("#selection")
+                .empty()
+                .append(
+                    render_rows(rows));
+        });
+};
+
+
+$(document).ready(function() {
+  $.getJSON("data/sample.json", {}, function(res) {
+      $("#num").text(res.length);
+
+      // Build up a graph showing fires by day
+      var fires_by_day = {};
+      res.forEach(function(row) {
+          fires_by_day[row["Dispatch Date"]] = (fires_by_day[row["Dispatch Date"]] || []);
+          fires_by_day[row["Dispatch Date"]].push(row);
+      });
+
+      // Make a simple visualization for each date
+      for(var date in fires_by_day) {
+          display(date, fires_by_day[date]);
+      }
+  });
+});
+</script>
+</head>
+<body>
+<h1>Trivial Data Import</h1>
+<i><span id="num">???</span> rows of data</i>
+<div id="firesbyday"></div>
+<div id="selection"></div>
+</body>
+</html>
